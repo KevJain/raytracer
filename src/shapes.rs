@@ -2,6 +2,7 @@
 // Defines primitive shapes and their geometry
 use crate::geometry::{Point3, Vec3};
 use crate::ray::Ray;
+use crate::math::Interval;
 pub struct HitRecord {
     pub p: Point3,
     pub normal: Vec3,
@@ -30,7 +31,7 @@ impl HitRecord {
 }
 
 pub trait Hittable {
-    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64, hit_rec: &mut HitRecord) -> bool;
+    fn hit(&self, ray: &Ray, time: &Interval, hit_rec: &mut HitRecord) -> bool;
 }
 
 pub struct Sphere {
@@ -39,7 +40,7 @@ pub struct Sphere {
 }
 
 impl Hittable for Sphere {
-    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64, hit_rec: &mut HitRecord) -> bool {
+    fn hit(&self, ray: &Ray, time: &Interval, hit_rec: &mut HitRecord) -> bool {
         let c_min_p: Vec3 = self.center - ray.origin;
         let a = ray.direction.dot(ray.direction);
         let h = ray.direction.dot(c_min_p);
@@ -51,9 +52,9 @@ impl Hittable for Sphere {
             let roots: [f64; 2] = [(h - discriminant.sqrt()) / a, (h + discriminant.sqrt()) / a];
             let intersect: f64;
             // Get first intersection in range
-            if t_min <= roots[0] && roots[0] <= t_max {
+            if time.contains(roots[0]) {
                 intersect = roots[0];
-            } else if t_min <= roots[1] && roots[1] <= t_max {
+            } else if time.contains(roots[1]) {
                 intersect = roots[1];
             } else {
                 return false;
@@ -72,10 +73,9 @@ pub enum Shape {
 }
 
 impl Hittable for Shape {
-    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64, hit_rec: &mut HitRecord) -> bool {
+    fn hit(&self, ray: &Ray, time: &Interval, hit_rec: &mut HitRecord) -> bool {
         match self {
-            Shape::Sphere(s) => s.hit(ray, t_min, t_max, hit_rec),
-            _ => false
+            Shape::Sphere(s) => s.hit(ray, time, hit_rec),
         }
     }
 }
@@ -85,12 +85,12 @@ pub struct World {
 }
 
 impl Hittable for World {
-    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64, hit_rec: &mut HitRecord) -> bool {
+    fn hit(&self, ray: &Ray, time: &Interval, hit_rec: &mut HitRecord) -> bool {
         //let mut temp_rec = HitRecord::new();
-        let mut closest_t = t_max;
+        let mut closest_t = time.max;
         let mut hit_anything = false;
         for object in self.objects.iter() {
-            if object.hit(ray, t_min, closest_t, hit_rec) {
+            if object.hit(ray, &Interval::new(time.min, closest_t), hit_rec) {
                 hit_anything = true;
                 closest_t = hit_rec.t;
             }
