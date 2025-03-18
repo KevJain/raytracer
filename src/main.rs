@@ -1,12 +1,14 @@
 mod color;
 mod geometry;
 mod ray;
+mod shapes;
 
 use color::Color;
 use color::write_pixel;
 use geometry::Point3;
 use geometry::Vec3;
 use ray::Ray;
+use shapes::{HitRecord, Hittable, Sphere};
 use std::fs::File;
 use std::io::{self, BufWriter, Write};
 use std::time::Instant;
@@ -21,15 +23,15 @@ const WHITE: Color = Color {
     y: 1.0,
     z: 1.0,
 };
-const BLACK: Color = Color {
+const _BLACK: Color = Color {
     x: 0.0,
     y: 0.0,
-    z: 0.0
+    z: 0.0,
 };
 
 fn main() {
     // Image dimension calculations (width fixed)
-    let aspect_ratio: f64 = 16.0 / 9.0;
+    let aspect_ratio: f64 = 8.0 / 5.0;
     let image_width = 3024;
     let image_height: u32 = (image_width as f64 / aspect_ratio) as u32;
 
@@ -76,21 +78,19 @@ fn main() {
 }
 
 fn ray_color(ray: &Ray) -> Color {
-    if ray_sphere_intersection(ray, Point3::new(0.0,0.0,1.0), 0.5) {
-        return BLACK;
+    let sphere_center = Point3::new(0.0, 0.0, -1.0);
+    let radius = 0.5;
+    let sphere = Sphere {center: sphere_center, radius};
+    match sphere.hit(ray, 0.0, 100.0) {
+        Some(hit_rec) => {
+            (hit_rec.normal + Color::new(1.0,1.0,1.0)) * 0.5
+        }
+        None => {
+            let unit_direction = ray.direction.normalize();
+            let a = (unit_direction.y + 1.0) * 0.5;
+            (a) * BLUE + (1.0 - a) * WHITE
+        }
     }
-    let unit_direction = ray.direction.normalize();
-    let a = (unit_direction.y + 1.0) * 0.5;
-    (a) * BLUE + (1.0 - a) * WHITE
-}
-
-fn ray_sphere_intersection(ray: &Ray, center: Point3, radius: f64) -> bool {
-    let c_min_p: Vec3 = center - ray.origin;
-    let a = ray.direction.dot(ray.direction);
-    let b = -2.0 * (ray.direction.dot(c_min_p));
-    let c = c_min_p.dot(c_min_p) - radius * radius;
-    let discriminant = b * b - 4.0 * a * c;
-    discriminant >= 0.0
 }
 
 // Outputs the image to output.ppm
@@ -102,6 +102,7 @@ fn render(
     delta_v: Vec3,
     camera_center: Point3,
 ) -> io::Result<()> {
+    println!("Writing {} x {} image", width, height);
     let file = File::create("output.ppm")?;
     let mut buf_writer = BufWriter::new(file);
     writeln!(buf_writer, "P3")?;
