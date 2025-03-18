@@ -7,8 +7,10 @@ use color::Color;
 use color::write_pixel;
 use geometry::Point3;
 use geometry::Vec3;
+use geometry::degrees_to_radians;
 use ray::Ray;
-use shapes::{HitRecord, Hittable, Sphere};
+use shapes::HitRecord;
+use shapes::{Hittable, Sphere, Shape, World};
 use std::fs::File;
 use std::io::{self, BufWriter, Write};
 use std::time::Instant;
@@ -77,19 +79,14 @@ fn main() {
     }
 }
 
-fn ray_color(ray: &Ray) -> Color {
-    let sphere_center = Point3::new(0.0, 0.0, -1.0);
-    let radius = 0.5;
-    let sphere = Sphere {center: sphere_center, radius};
-    match sphere.hit(ray, 0.0, 100.0) {
-        Some(hit_rec) => {
-            (hit_rec.normal + Color::new(1.0,1.0,1.0)) * 0.5
-        }
-        None => {
-            let unit_direction = ray.direction.normalize();
-            let a = (unit_direction.y + 1.0) * 0.5;
-            (a) * BLUE + (1.0 - a) * WHITE
-        }
+fn ray_color(ray: &Ray, world: &World) -> Color {
+    let mut hit_rec = HitRecord::new();
+    if world.hit(ray, 0.0, 100.0, &mut hit_rec) {
+        (hit_rec.normal + Color::new(1.0,1.0,1.0)) * 0.5
+    } else {
+        let unit_direction = ray.direction.normalize();
+        let a = (unit_direction.y + 1.0) * 0.5;
+        (a) * BLUE + (1.0 - a) * WHITE
     }
 }
 
@@ -109,6 +106,16 @@ fn render(
     writeln!(buf_writer, "{} {}", width, height)?;
     writeln!(buf_writer, "255")?;
 
+    // Define world:
+    let mut world = World {
+        objects: vec![]
+    };
+    let sphere_center = Point3::new(0.0, 0.0, -1.0);
+    let radius = 0.5;
+    let sphere = Sphere {center: sphere_center, radius};
+    world.objects.push(Shape::Sphere(sphere));
+    world.objects.push(Shape::Sphere(Sphere {center: Point3::new(0.0, -100.5, 0.0), radius: 100.0}));
+
     for row in 0..(height) {
         io::stdout().flush()?;
         print!("\rRendering line {}", row);
@@ -120,7 +127,7 @@ fn render(
                 origin: camera_center,
                 direction: ray_direction,
             };
-            let color = ray_color(&ray);
+            let color = ray_color(&ray, &world);
             write_pixel(&mut buf_writer, color)?;
         }
     }
