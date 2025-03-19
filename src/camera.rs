@@ -2,11 +2,13 @@
 // Controls camera data and position
 
 use crate::geometry::{Point3, Vec3};
-use crate::ray::Ray;
-use crate::shapes::{HitRecord, World, Hittable};
 use crate::math::Interval;
+use crate::ray::Ray;
+use crate::shapes::{HitRecord, Hittable, World};
+use rand::Rng;
+use rand::rngs::ThreadRng;
 use std::fs::File;
-use std::io::{self, BufWriter, Write, Result};
+use std::io::{self, BufWriter, Result, Write};
 
 const BLUE: Color = Color {
     x: 0.5,
@@ -30,14 +32,15 @@ pub struct Camera {
     pub image_width: u32,
     pub image_height: u32,
     pub location: Point3,
+    pub samples: u32,
     // Viewport fields:
     pixel00: Point3,
     delta_u: Vec3,
-    delta_v: Vec3
+    delta_v: Vec3,
 }
 
 impl Camera {
-    pub fn new(aspect_ratio: f64, image_width: u32) -> Self {
+    pub fn new(aspect_ratio: f64, image_width: u32, samples: u32) -> Self {
         let image_height: u32 = (image_width as f64 / aspect_ratio) as u32;
         let focal_length: f64 = 1.0;
         let origin = Point3::new(0.0, 0.0, 0.0);
@@ -68,11 +71,11 @@ impl Camera {
             image_width,
             image_height,
             location: origin,
+            samples,
             pixel00,
             delta_u: pixel_delta_u,
-            delta_v: pixel_delta_v
+            delta_v: pixel_delta_v,
         }
-        
     }
 
     pub fn render(&self, world: &World) -> io::Result<()> {
@@ -82,29 +85,42 @@ impl Camera {
         writeln!(buf_writer, "P3")?;
         writeln!(buf_writer, "{} {}", self.image_width, self.image_height)?;
         writeln!(buf_writer, "255")?;
-    
-        
+
+        let mut rng: ThreadRng = rand::thread_rng();
         for row in 0..(self.image_height) {
             io::stdout().flush()?;
             print!("\rRendering line {}", row);
             for col in 0..(self.image_width) {
-                let pixel_center = self.pixel00 + self.delta_u * (col as f64) + self.delta_v * (row as f64);
-                let ray_direction = pixel_center - self.location;
-    
-                let ray = Ray {
-                    origin: self.location,
-                    direction: ray_direction,
-                };
-                let color = Camera::ray_color(&ray, &world);
-                Camera::write_pixel(&mut buf_writer, color)?;
+                let mut color = Color::new(0.0, 0.0, 0.0);
+                for _ in 0..self.samples {
+                    let ray = self.get_ray(row, col, &mut rng);
+                    color = color + Camera::ray_color(&ray, world);
+                }
+                Camera::write_pixel(&mut buf_writer, color / self.samples as f64)?;
             }
         }
         println!("");
-    
+
         Ok(())
     }
 
-    fn write_pixel<W: Write> (writer: &mut W, color: Color) -> Result<()> {
+    fn get_ray(&self, pixel_row: u32, pixel_col: u32, rng: &mut ThreadRng) -> Ray {
+        // Pixels are located at the center of the square they occupy
+        // Thus, we sample an offset in [-0.5,0.5) x [-0.5,0.5) to get a ray in the sample pixel
+        // u is the change of coordinate for the x direction, and v is the change of coordinate for the y direction
+        let offset_v: f64 = rng.r#gen();
+        let offset_u: f64 = rng.r#gen();
+        let viewport_location: Point3 = self.pixel00
+            + ((pixel_row as f64 + offset_v) * self.delta_v)
+            + ((pixel_col as f64 + offset_u) * self.delta_u);
+
+        Ray {
+            origin: self.location,
+            direction: viewport_location - self.location,
+        }
+    }
+
+    fn write_pixel<W: Write>(writer: &mut W, color: Color) -> Result<()> {
         let rbyte = (color.x * 255.999) as u8;
         let gbyte = (color.y * 255.999) as u8;
         let bbyte = (color.z * 255.999) as u8;
@@ -114,7 +130,7 @@ impl Camera {
     fn ray_color(ray: &Ray, world: &World) -> Color {
         let mut hit_rec = HitRecord::new();
         if world.hit(ray, &Interval::new(0.0, 100.0), &mut hit_rec) {
-            (hit_rec.normal + Color::new(1.0,1.0,1.0)) * 0.5
+            (hit_rec.normal + Color::new(1.0, 1.0, 1.0)) * 0.5
         } else {
             let unit_direction = ray.direction.normalize();
             let a = (unit_direction.y + 1.0) * 0.5;
