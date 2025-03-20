@@ -5,6 +5,8 @@ use std::ops::Mul;
 use std::ops::Neg;
 use std::ops::Sub;
 
+use rand::Rng;
+use rand::rngs::ThreadRng;
 pub type Point3 = Vec3;
 
 #[derive(Debug, Clone, Copy)]
@@ -109,6 +111,27 @@ impl Vec3 {
     pub fn new(x: f64, y: f64, z: f64) -> Self {
         Vec3 { x, y, z }
     }
+
+    // Get a random vector in [-1,1] x [-1,1] x [-1,1]
+    pub fn random_vec(rng: &mut ThreadRng) -> Vec3 {
+        Vec3 {
+            x: rng.gen_range(-1.0..1.0),
+            y: rng.gen_range(-1.0..1.0),
+            z: rng.gen_range(-1.0..1.0),
+        }
+    }
+
+    // Rejection sampling: TODO consider updating sampling method
+    pub fn sample_unit_vector(rng: &mut ThreadRng) -> Vec3 {
+        let mut vec = Self::random_vec(rng);
+        let mut lensq = vec.dot(vec);
+        while lensq > 1.0 || lensq < 1e-100 {
+            vec = Self::random_vec(rng);
+            lensq = vec.dot(vec)
+        }
+        vec / lensq.sqrt()
+    }
+
 }
 
 pub fn degrees_to_radians(degrees: f64) -> f64 {

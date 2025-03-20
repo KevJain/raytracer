@@ -9,26 +9,28 @@ use geometry::Point3;
 use shapes::Shape;
 use shapes::Sphere;
 use shapes::World;
-use std::io::{self, BufWriter, Write};
 use std::time::Instant;
 
 fn main() {
     // Image dimension calculations (width fixed)
     let aspect_ratio: f64 = 8.0 / 5.0;
     let image_width = 400;
-    let samples = 100;
-    let camera = Camera::new(aspect_ratio, image_width, samples);
+    let samples = 20;
+    let max_depth = 50;
+    let camera = Camera::new(aspect_ratio, image_width, samples, max_depth);
 
     // Define world:
     let mut world = World { objects: vec![] };
     let sphere_center = Point3::new(0.0, 0.0, -1.0);
     let radius = 0.5;
     let sphere = Sphere {
-        center: sphere_center,
+        label: String::from("Sph1"),
+        center: sphere_center, 
         radius,
     };
     world.objects.push(Shape::Sphere(sphere));
     world.objects.push(Shape::Sphere(Sphere {
+        label: String::from("Sph2"),
         center: Point3::new(0.0, -100.5, 0.0),
         radius: 100.0,
     }));

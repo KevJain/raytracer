@@ -20,10 +20,22 @@ const WHITE: Color = Color {
     y: 1.0,
     z: 1.0,
 };
-const _BLACK: Color = Color {
+const BLACK: Color = Color {
     x: 0.0,
     y: 0.0,
     z: 0.0,
+};
+
+const RED: Color = Color {
+    x: 1.0,
+    y: 0.0,
+    z: 0.0,
+};
+
+const GREEN: Color = Color {
+    x: 50.0/255.0,
+    y: 200.0/255.0,
+    z: 90.0/255.0,
 };
 type Color = crate::geometry::Vec3;
 
@@ -33,6 +45,7 @@ pub struct Camera {
     pub image_height: u32,
     pub location: Point3,
     pub samples: u32,
+    pub max_depth: i32,
     // Viewport fields:
     pixel00: Point3,
     delta_u: Vec3,
@@ -40,7 +53,7 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub fn new(aspect_ratio: f64, image_width: u32, samples: u32) -> Self {
+    pub fn new(aspect_ratio: f64, image_width: u32, samples: u32, max_depth: i32) -> Self {
         let image_height: u32 = (image_width as f64 / aspect_ratio) as u32;
         let focal_length: f64 = 1.0;
         let origin = Point3::new(0.0, 0.0, 0.0);
@@ -72,6 +85,7 @@ impl Camera {
             image_height,
             location: origin,
             samples,
+            max_depth,
             pixel00,
             delta_u: pixel_delta_u,
             delta_v: pixel_delta_v,
@@ -92,11 +106,15 @@ impl Camera {
             print!("\rRendering line {}", row);
             for col in 0..(self.image_width) {
                 let mut color = Color::new(0.0, 0.0, 0.0);
-                for _ in 0..self.samples {
+                for i in 0..self.samples {
+                    //println!("Casting Ray at ({}, {})", row, col);
                     let ray = self.get_ray(row, col, &mut rng);
-                    color = color + Camera::ray_color(&ray, world);
+                    color = color + Camera::ray_color(&ray, world, &mut rng, self.max_depth);
+                    //println!();
                 }
-                Camera::write_pixel(&mut buf_writer, color / self.samples as f64)?;
+                let color_avg = color / self.samples as f64;
+                let gamma_corrected_color = Self::color_gamma_transform(color_avg, 2.0);
+                Camera::write_pixel(&mut buf_writer, gamma_corrected_color)?;
             }
         }
         println!("");
@@ -108,8 +126,8 @@ impl Camera {
         // Pixels are located at the center of the square they occupy
         // Thus, we sample an offset in [-0.5,0.5) x [-0.5,0.5) to get a ray in the sample pixel
         // u is the change of coordinate for the x direction, and v is the change of coordinate for the y direction
-        let offset_v: f64 = rng.r#gen();
-        let offset_u: f64 = rng.r#gen();
+        let offset_v: f64 = rng.r#gen::<f64>() - 0.5;
+        let offset_u: f64 = rng.r#gen::<f64>() - 0.5;
         let viewport_location: Point3 = self.pixel00
             + ((pixel_row as f64 + offset_v) * self.delta_v)
             + ((pixel_col as f64 + offset_u) * self.delta_u);
@@ -127,10 +145,39 @@ impl Camera {
         writeln!(writer, "{} {} {}", rbyte, gbyte, bbyte)
     }
 
-    fn ray_color(ray: &Ray, world: &World) -> Color {
+    fn color_gamma_transform(color: Color, gamma: f64) -> Color {
+        Color::new(
+            Self::linear_to_gamma(color.x, gamma),
+            Self::linear_to_gamma(color.y, gamma),
+            Self::linear_to_gamma(color.z, gamma),
+        )
+    }
+
+    // Transforms linear colour space to gamma
+    fn linear_to_gamma(linear: f64, gamma: f64) -> f64 {
+        linear.powf(1.0 / gamma)
+    }
+
+    fn color_rgb(r: u8, g: u8, b: u8) -> Color{
+        Color::new(r as f64/255.0, g as f64/255.0, b as f64/255.0)
+    }
+
+    fn ray_color(ray: &Ray, world: &World, rng: &mut ThreadRng, depth: i32) -> Color {
+        if depth <= 0 {
+            return RED;
+        }
         let mut hit_rec = HitRecord::new();
-        if world.hit(ray, &Interval::new(0.0, 100.0), &mut hit_rec) {
-            (hit_rec.normal + Color::new(1.0, 1.0, 1.0)) * 0.5
+        if world.hit(ray, &Interval::new(0.001, 100000000000.0), &mut hit_rec) {
+            let new_direction = hit_rec.normal + Vec3::sample_unit_vector(rng);
+            0.5 * Self::ray_color(
+                &Ray {
+                    origin: hit_rec.p,
+                    direction: new_direction,
+                },
+                world,
+                rng,
+                depth - 1,
+            )
         } else {
             let unit_direction = ray.direction.normalize();
             let a = (unit_direction.y + 1.0) * 0.5;
