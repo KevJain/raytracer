@@ -9,35 +9,13 @@ use rand::Rng;
 use rand::rngs::ThreadRng;
 use std::fs::File;
 use std::io::{self, BufWriter, Result, Write};
+use crate::material::Color;
+use crate::material::GREEN;
+use crate::material::BLUE;
+use crate::material::WHITE;
+use crate::material::BLACK;
+use crate::material::RED;
 
-const BLUE: Color = Color {
-    x: 0.5,
-    y: 0.7,
-    z: 1.0,
-};
-const WHITE: Color = Color {
-    x: 1.0,
-    y: 1.0,
-    z: 1.0,
-};
-const BLACK: Color = Color {
-    x: 0.0,
-    y: 0.0,
-    z: 0.0,
-};
-
-const RED: Color = Color {
-    x: 1.0,
-    y: 0.0,
-    z: 0.0,
-};
-
-const GREEN: Color = Color {
-    x: 50.0/255.0,
-    y: 200.0/255.0,
-    z: 90.0/255.0,
-};
-type Color = crate::geometry::Vec3;
 
 pub struct Camera {
     pub aspect_ratio: f64,
@@ -166,18 +144,10 @@ impl Camera {
         if depth <= 0 {
             return RED;
         }
-        let mut hit_rec = HitRecord::new();
+        let mut hit_rec = world.new_hitrecord();
         if world.hit(ray, &Interval::new(0.001, 100000000000.0), &mut hit_rec) {
-            let new_direction = hit_rec.normal + Vec3::sample_unit_vector(rng);
-            0.5 * Self::ray_color(
-                &Ray {
-                    origin: hit_rec.p,
-                    direction: new_direction,
-                },
-                world,
-                rng,
-                depth - 1,
-            )
+            let (attenuation, new_ray) = hit_rec.material.scatter(ray, &hit_rec, rng);
+            attenuation * Self::ray_color(&new_ray, world, rng, depth - 1)
         } else {
             let unit_direction = ray.direction.normalize();
             let a = (unit_direction.y + 1.0) * 0.5;

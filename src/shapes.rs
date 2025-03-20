@@ -1,14 +1,20 @@
+use std::rc::Rc;
+
 // shapes.rs
 // Defines primitive shapes and their geometry
 use crate::geometry::{Point3, Vec3};
 use crate::ray::Ray;
 use crate::math::Interval;
+use crate::material::Material;
+use crate::material::DefaultMaterial;
+
 #[derive(Debug)]
 pub struct HitRecord {
     pub p: Point3,
     pub normal: Vec3,
     pub t: f64,
     pub front_face: bool,
+    pub material: Rc<dyn Material>
 }
 
 impl HitRecord {
@@ -26,14 +32,6 @@ impl HitRecord {
             //println!("{:?}", outward_normal);
             self.normal = -outward_normal
         };
-    }
-    pub fn new() -> Self {
-        HitRecord {
-            p: Point3::default(),
-            normal: Vec3::default(),
-            t: 0.0,
-            front_face: false
-        }
     }
 }
 
@@ -92,20 +90,38 @@ impl Hittable for Shape {
 }
 
 pub struct World {
-    pub objects: Vec<Shape>
+    // Note: monomorphization was used for shape determination, but dynamic dispatch
+    // was used for material allocation. Consider tradeoffs of each.
+    pub objects: Vec<(Shape, usize)>, // Each object is represented by its shape and index of material in materials
+    pub materials: Vec<Rc<dyn Material>>
 }
 
 impl Hittable for World {
     fn hit(&self, ray: &Ray, time: &Interval, hit_rec: &mut HitRecord) -> bool {
-        //let mut temp_rec = HitRecord::new();
         let mut closest_t = time.max;
         let mut hit_anything = false;
-        for object in self.objects.iter() {
+        for (object, material_index) in self.objects.iter() {
             if object.hit(ray, &Interval::new(time.min, closest_t), hit_rec) {
                 hit_anything = true;
                 closest_t = hit_rec.t;
+                hit_rec.material = Rc::clone(&self.materials[*material_index]);
             }
         }
         hit_anything
+    }
+}
+
+impl World {
+    pub fn new() -> Self {
+        World { objects: vec![], materials: vec![Rc::new(DefaultMaterial{})]}
+    }
+    pub fn new_hitrecord(&self) -> HitRecord {
+        HitRecord {
+            p: Point3::default(),
+            normal: Vec3::default(),
+            t: 0.0,
+            front_face: false,
+            material: Rc::clone(&self.materials[0])
+        }
     }
 }

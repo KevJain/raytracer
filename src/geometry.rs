@@ -66,6 +66,14 @@ impl Mul<Vec3> for f64 {
     }
 }
 
+// Component-wise vector multiplication
+impl Mul<Vec3> for Vec3 {
+    type Output = Vec3;
+    fn mul(self, other: Vec3) -> Vec3 {
+        Self::new(self.x * other.x, self.y * other.y, self.z * other.z)
+    }
+}
+
 impl Div<f64> for Vec3 {
     type Output = Vec3;
     fn div(self, t: f64) -> Vec3 {
@@ -108,8 +116,18 @@ impl Vec3 {
         self / self.len()
     }
 
+    pub fn too_small(self) -> bool {
+        let s = 1e-8;
+        self.x < s && self.y < s && self.z < s
+    }
+
     pub fn new(x: f64, y: f64, z: f64) -> Self {
         Vec3 { x, y, z }
+    }
+
+    // Reflects a vetor v about a UNIT LENGTH normal n
+    pub fn reflect(v: Vec3, n: Vec3) -> Vec3 {
+        v - 2.0 * v.dot(n) * n
     }
 
     // Get a random vector in [-1,1] x [-1,1] x [-1,1]
