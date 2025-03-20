@@ -130,6 +130,17 @@ impl Vec3 {
         v - 2.0 * v.dot(n) * n
     }
 
+    // Computes the refracted direction of an incident ray uv with respect to the plane
+    // defined by the normal n, each of which has unit length, assuming that the
+    // ratios of the index of refraction for the current medium and struck medium
+    // is refraction_ratio
+    pub fn refract(uv: Vec3, n: Vec3, refraction_ratio: f64) -> Vec3 {
+        let cos_theta = f64::min(-uv.dot(n), 1.0);
+        let perp_component = refraction_ratio * (uv + cos_theta * n);
+        let parallel_component = -((1.0 - perp_component.dot(perp_component)).abs().sqrt()) * n;
+        perp_component + parallel_component
+    }
+
     // Get a random vector in [-1,1] x [-1,1] x [-1,1]
     pub fn random_vec(rng: &mut ThreadRng) -> Vec3 {
         Vec3 {

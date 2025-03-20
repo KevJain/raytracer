@@ -9,6 +9,7 @@ use geometry::Point3;
 use material::Color;
 use material::Lambertian;
 use material::Metal;
+use material::Dielectric;
 use shapes::Shape;
 use shapes::Sphere;
 use shapes::World;
@@ -19,7 +20,7 @@ fn main() {
     // Image dimension calculations (width fixed)
     let aspect_ratio: f64 = 8.0 / 5.0;
     let image_width = 400;
-    let samples = 100;
+    let samples = 40;
     let max_depth = 50;
     let camera = Camera::new(aspect_ratio, image_width, samples, max_depth);
 
@@ -49,14 +50,21 @@ fn initialize_materials(world: &mut World) {
     };
     let left = Metal {
         albedo: Color::new(0.8, 0.8, 0.8),
+        fuzz: 0.3
     };
     let right = Metal {
         albedo: Color::new(0.8, 0.6, 0.2),
+        fuzz: 1.0
+    };
+    let glass = Dielectric {
+        refraction_index: 1.5
     };
     world.materials.push(Rc::new(ground));
     world.materials.push(Rc::new(center));
     world.materials.push(Rc::new(left));
     world.materials.push(Rc::new(right));
+    world.materials.push(Rc::new(glass));
+
 }
 
 fn add_objects(world: &mut World) {
@@ -77,7 +85,7 @@ fn add_objects(world: &mut World) {
         label: String::from("left"),
         center: Point3::new(-1.0, 0.0, -1.0),
         radius: 0.5,
-    }), 3));
+    }), 5));
     world.objects.push((Shape::Sphere(Sphere {
         label: String::from("right"),
         center: Point3::new(1.0, 0.0, -1.0),

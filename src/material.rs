@@ -35,14 +35,24 @@ pub const GREEN: Color = Color {
 };
 
 pub trait Material: Debug {
-    fn scatter(&self, ray_in: &Ray, hit_rec: &HitRecord, rng: &mut ThreadRng) -> (Color, Ray);
+    fn scatter(
+        &self,
+        ray_in: &Ray,
+        hit_rec: &HitRecord,
+        rng: &mut ThreadRng,
+    ) -> Option<(Color, Ray)>;
 }
 
 #[derive(Debug)]
 pub struct DefaultMaterial {}
 
 impl Material for DefaultMaterial {
-    fn scatter(&self, ray_in: &Ray, hit_rec: &HitRecord, rng: &mut ThreadRng) -> (Color, Ray) {
+    fn scatter(
+        &self,
+        ray_in: &Ray,
+        hit_rec: &HitRecord,
+        rng: &mut ThreadRng,
+    ) -> Option<(Color, Ray)> {
         panic!("No material assigned for {:?}", hit_rec)
     }
 }
@@ -53,7 +63,12 @@ pub struct Lambertian {
 }
 
 impl Material for Lambertian {
-    fn scatter(&self, ray_in: &Ray, hit_rec: &HitRecord, rng: &mut ThreadRng) -> (Color, Ray) {
+    fn scatter(
+        &self,
+        ray_in: &Ray,
+        hit_rec: &HitRecord,
+        rng: &mut ThreadRng,
+    ) -> Option<(Color, Ray)> {
         let mut scatter_direction = hit_rec.normal + Vec3::sample_unit_vector(rng);
         if Vec3::too_small(scatter_direction) {
             scatter_direction = hit_rec.normal;
@@ -62,23 +77,64 @@ impl Material for Lambertian {
             direction: scatter_direction,
             origin: hit_rec.p,
         };
-        (self.albedo, out_ray)
+        Some((self.albedo, out_ray))
     }
 }
 
 #[derive(Debug)]
 pub struct Metal {
     pub albedo: Color,
+    pub fuzz: f64,
 }
 
 impl Material for Metal {
-    fn scatter(&self, ray_in: &Ray, hit_rec: &HitRecord, rng: &mut ThreadRng) -> (Color, Ray) {
-        (
-            self.albedo,
+    fn scatter(
+        &self,
+        ray_in: &Ray,
+        hit_rec: &HitRecord,
+        rng: &mut ThreadRng,
+    ) -> Option<(Color, Ray)> {
+        let mut reflected = Vec3::reflect(ray_in.direction, hit_rec.normal);
+        reflected = Vec3::normalize(reflected) + self.fuzz * Vec3::sample_unit_vector(rng);
+        if reflected.dot(hit_rec.normal) > 0.0 {
+            Some((
+                self.albedo,
+                Ray {
+                    origin: hit_rec.p,
+                    direction: reflected,
+                },
+            ))
+        } else {
+            // Reflected ray is absorbed by metal, no ray out and color = black
+            None
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct Dielectric {
+    pub refraction_index: f64, // TODO: pub color: Color
+}
+
+impl Material for Dielectric {
+    fn scatter(
+        &self,
+        ray_in: &Ray,
+        hit_rec: &HitRecord,
+        rng: &mut ThreadRng,
+    ) -> Option<(Color, Ray)> {
+        let refract = if hit_rec.front_face {
+            1.0 / self.refraction_index
+        } else {
+            self.refraction_index
+        };
+        let refracted = Vec3::refract(Vec3::normalize(ray_in.direction), hit_rec.normal, refract);
+        Some((
+            Color::new(1.0, 1.0, 1.0),
             Ray {
                 origin: hit_rec.p,
-                direction: Vec3::reflect(ray_in.direction, hit_rec.normal),
+                direction: refracted,
             },
-        )
+        ))
     }
 }

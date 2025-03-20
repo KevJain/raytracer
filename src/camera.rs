@@ -146,8 +146,11 @@ impl Camera {
         }
         let mut hit_rec = world.new_hitrecord();
         if world.hit(ray, &Interval::new(0.001, 100000000000.0), &mut hit_rec) {
-            let (attenuation, new_ray) = hit_rec.material.scatter(ray, &hit_rec, rng);
-            attenuation * Self::ray_color(&new_ray, world, rng, depth - 1)
+            match hit_rec.material.scatter(ray, &hit_rec, rng) {
+                Some((attenuation, new_ray)) => attenuation * Self::ray_color(&new_ray, world, rng, depth - 1),
+                None => BLACK
+            }
+            
         } else {
             let unit_direction = ray.direction.normalize();
             let a = (unit_direction.y + 1.0) * 0.5;

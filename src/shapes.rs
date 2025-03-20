@@ -24,12 +24,14 @@ impl HitRecord {
         if self.front_face {
             self.normal = outward_normal
         } else {
+            /* 
             println!("Inside sphere!");
             println!("{:?}", ray);
             println!("{:?}", ray.direction.dot(outward_normal));
             println!("{:?}", outward_normal.len());
             println!("{:?}\n", outward_normal);
             //println!("{:?}", outward_normal);
+            */
             self.normal = -outward_normal
         };
     }
