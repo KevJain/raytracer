@@ -34,7 +34,7 @@ pub const GREEN: Color = Color {
     z: 90.0 / 255.0,
 };
 
-pub trait Material: Debug {
+pub trait Material: Debug + Sync + Send {
     fn scatter(
         &self,
         ray_in: &Ray,

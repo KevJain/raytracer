@@ -15,7 +15,7 @@ use crate::material::BLUE;
 use crate::material::WHITE;
 use crate::material::BLACK;
 use crate::material::RED;
-
+use rayon::prelude::*;
 
 pub struct Camera {
     pub aspect_ratio: f64,
@@ -78,22 +78,25 @@ impl Camera {
         writeln!(buf_writer, "{} {}", self.image_width, self.image_height)?;
         writeln!(buf_writer, "255")?;
 
-        let mut rng: ThreadRng = rand::thread_rng();
         for row in 0..(self.image_height) {
             io::stdout().flush()?;
             print!("\rRendering line {}", row);
-            for col in 0..(self.image_width) {
+            let mut line_buffer: Vec<Color> = vec![Color::default(); self.image_width as usize];
+            line_buffer.par_iter_mut().enumerate().for_each(|(col, elem)| {
+                let mut rng: ThreadRng = rand::thread_rng();
                 let mut color = Color::new(0.0, 0.0, 0.0);
                 for i in 0..self.samples {
                     //println!("Casting Ray at ({}, {})", row, col);
-                    let ray = self.get_ray(row, col, &mut rng);
+                    let ray = self.get_ray(row, col as u32, &mut rng);
                     color = color + Camera::ray_color(&ray, world, &mut rng, self.max_depth);
                     //println!();
                 }
                 let color_avg = color / self.samples as f64;
                 let gamma_corrected_color = Self::color_gamma_transform(color_avg, 2.0);
-                Camera::write_pixel(&mut buf_writer, gamma_corrected_color)?;
-            }
+                *elem = gamma_corrected_color;
+                //Camera::write_pixel(&mut buf_writer, gamma_corrected_color)?;
+            });
+            Camera::write_line(&mut buf_writer, &line_buffer);
         }
         println!("");
 
@@ -113,6 +116,15 @@ impl Camera {
         Ray {
             origin: self.location,
             direction: viewport_location - self.location,
+        }
+    }
+
+    fn write_line<W: Write>(writer: &mut W, line_buffer:  &Vec<Color>) {
+        for color in line_buffer {
+            let rbyte = (color.x * 255.999) as u8;
+            let gbyte = (color.y * 255.999) as u8;
+            let bbyte = (color.z * 255.999) as u8;
+            writeln!(writer, "{} {} {}", rbyte, gbyte, bbyte);
         }
     }
 

@@ -10,11 +10,12 @@ use rand::rngs::ThreadRng;
 pub type Point3 = Vec3;
 
 #[derive(Debug, Clone, Copy)]
-pub struct Vec3 {
+pub struct Vec3{
     pub x: f64,
     pub y: f64,
     pub z: f64,
 }
+
 
 impl Default for Vec3 {
     fn default() -> Self {

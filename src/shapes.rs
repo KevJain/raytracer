@@ -1,4 +1,5 @@
 use std::rc::Rc;
+use std::sync::Arc;
 
 // shapes.rs
 // Defines primitive shapes and their geometry
@@ -14,7 +15,7 @@ pub struct HitRecord {
     pub normal: Vec3,
     pub t: f64,
     pub front_face: bool,
-    pub material: Rc<dyn Material>
+    pub material: Arc<dyn Material>
 }
 
 impl HitRecord {
@@ -95,7 +96,7 @@ pub struct World {
     // Note: monomorphization was used for shape determination, but dynamic dispatch
     // was used for material allocation. Consider tradeoffs of each.
     pub objects: Vec<(Shape, usize)>, // Each object is represented by its shape and index of material in materials
-    pub materials: Vec<Rc<dyn Material>>
+    pub materials: Vec<Arc<dyn Material>>
 }
 
 impl Hittable for World {
@@ -106,7 +107,7 @@ impl Hittable for World {
             if object.hit(ray, &Interval::new(time.min, closest_t), hit_rec) {
                 hit_anything = true;
                 closest_t = hit_rec.t;
-                hit_rec.material = Rc::clone(&self.materials[*material_index]);
+                hit_rec.material = Arc::clone(&self.materials[*material_index]);
             }
         }
         hit_anything
@@ -115,7 +116,7 @@ impl Hittable for World {
 
 impl World {
     pub fn new() -> Self {
-        World { objects: vec![], materials: vec![Rc::new(DefaultMaterial{})]}
+        World { objects: vec![], materials: vec![Arc::new(DefaultMaterial{})]}
     }
     pub fn new_hitrecord(&self) -> HitRecord {
         HitRecord {
@@ -123,7 +124,7 @@ impl World {
             normal: Vec3::default(),
             t: 0.0,
             front_face: false,
-            material: Rc::clone(&self.materials[0])
+            material: Arc::clone(&self.materials[0])
         }
     }
 }
