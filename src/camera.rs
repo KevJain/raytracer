@@ -4,7 +4,7 @@
 use crate::geometry::{Point3, Vec3};
 use crate::math::Interval;
 use crate::ray::Ray;
-use crate::shapes::{HitRecord, Hittable, World};
+use crate::shapes::{Hittable, World};
 use rand::Rng;
 use rand::rngs::ThreadRng;
 use std::fs::File;

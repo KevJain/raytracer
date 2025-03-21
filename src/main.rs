@@ -13,7 +13,6 @@ use material::Dielectric;
 use shapes::Shape;
 use shapes::Sphere;
 use shapes::World;
-use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -29,7 +28,7 @@ fn main() {
     // Image dimension calculations (width fixed)
     let aspect_ratio: f64 = 8.0 / 5.0;
     let image_width = 400;
-    let samples = 1000;
+    let samples = 40;
     let max_depth = 50;
     let camera = Camera::new(aspect_ratio, image_width, samples, max_depth);
 
@@ -68,11 +67,19 @@ fn initialize_materials(world: &mut World) {
     let glass = Dielectric {
         refraction_index: 1.5
     };
+    let air_in_water =  Dielectric {
+        refraction_index: 1.0/1.33
+    };
+    let air_in_glass = Dielectric {
+        refraction_index: 1.0 / 1.5
+    };
     world.materials.push(Arc::new(ground));
     world.materials.push(Arc::new(center));
     world.materials.push(Arc::new(left));
     world.materials.push(Arc::new(right));
     world.materials.push(Arc::new(glass));
+    world.materials.push(Arc::new(air_in_water));
+    world.materials.push(Arc::new(air_in_glass));
 
 }
 
@@ -99,5 +106,12 @@ fn add_objects(world: &mut World) {
         label: String::from("right"),
         center: Point3::new(1.0, 0.0, -1.0),
         radius: 0.5,
-    }), 4));
+    }), 5));
+    
+    world.objects.push((Shape::Sphere(Sphere {
+        label: String::from("interior"),
+        center: Point3::new(1.0, 0.0, -1.0),
+        radius: 0.4,
+    }), 7));
+    
 }
