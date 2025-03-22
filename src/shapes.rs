@@ -79,6 +79,12 @@ impl Hittable for Sphere {
     }
 }
 
+impl Sphere {
+    pub fn new(x: f64, y: f64, z: f64, radius: f64) -> Self {
+        Sphere { label: "".to_string(), center: Point3::new(x, y, z), radius: radius }
+    }
+}
+
 pub enum Shape {
     Sphere(Sphere)
 }
@@ -126,4 +132,9 @@ impl World {
             material: Arc::clone(&self.materials[0])
         }
     }
+    pub fn add_material<T: Material + 'static>(&mut self, material: T) {
+        self.materials.push(Arc::new(material));
+    }
+    
+    //pub fn add_object()
 }

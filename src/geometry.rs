@@ -162,6 +162,15 @@ impl Vec3 {
         vec / lensq.sqrt()
     }
 
+    // Gets a random vector in [-1,1] x [-1,1] 
+    pub fn sample_unit_disk(rng: &mut ThreadRng) -> Vec3 {
+        let mut vec = Vec3::new(rng.gen_range(-1.0..1.0), rng.gen_range(-1.0..1.0), 0.0);
+        while vec.dot(vec) > 1.0 {
+            vec = Vec3::new(rng.gen_range(-1.0..1.0), rng.gen_range(-1.0..1.0), 0.0);
+        }
+        vec
+    }
+
 }
 
 pub fn degrees_to_radians(degrees: f64) -> f64 {

@@ -10,9 +10,11 @@ use material::Color;
 use material::Lambertian;
 use material::Metal;
 use material::Dielectric;
+use material::{GREEN, WHITE, PINK, RED, BLUE};
 use shapes::Shape;
 use shapes::Sphere;
 use shapes::World;
+use std::f64::consts::PI;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -28,14 +30,21 @@ fn main() {
     // Image dimension calculations (width fixed)
     let aspect_ratio: f64 = 8.0 / 5.0;
     let image_width = 400;
-    let samples = 40;
+    let location = Point3::new(7.0,4.0,7.0);
+    let view_target = Point3::new(0.0,3.0,0.1);
+    let vfov = 46.0;
+    let focal_length = 10.0;
+    let focal_angle = 0.5; 
+    let samples = 10;
     let max_depth = 50;
-    let camera = Camera::new(aspect_ratio, image_width, samples, max_depth);
+    let camera = Camera::new(aspect_ratio, image_width, location, view_target, focal_length, focal_angle, vfov, samples, max_depth);
 
     // Define world:
     let mut world = World::new();
-    initialize_materials(&mut world);
-    add_objects(&mut world);
+
+    //initialize_materials(&mut world);
+    //add_objects(&mut world);
+    make_scene(&mut world);
 
     // Render with timer
     let start = Instant::now();
@@ -111,7 +120,50 @@ fn add_objects(world: &mut World) {
     world.objects.push((Shape::Sphere(Sphere {
         label: String::from("interior"),
         center: Point3::new(1.0, 0.0, -1.0),
-        radius: 0.4,
-    }), 7));
+        radius: 0.1,
+    }), 3));
     
+}
+
+fn make_scene(world: &mut World) {
+    let rng = rand::thread_rng();
+    let ground = Lambertian {
+        albedo: Color::new(0.5, 0.5, 0.5),
+    };
+    let glass = Dielectric {
+        refraction_index: 1.5
+    };
+    let metal = Metal {
+        albedo: Color::new(0.9,0.9,0.9),
+        fuzz: 0.0
+    };
+    world.add_material(ground);
+    world.add_material(glass);
+    world.add_material(metal);
+
+    world.add_material(Lambertian {albedo: GREEN});
+    world.add_material(Lambertian {albedo: RED});
+    world.add_material(Lambertian {albedo: PINK});
+
+    let ground_sphere = Sphere::new(0.0, -1000.0, 0.0, 1000.0);
+    world.objects.push((Shape::Sphere(ground_sphere), 1));
+
+    let central_sphere = Sphere::new(0.0, 1.0, 0.0, 1.0);
+    world.objects.push((Shape::Sphere(central_sphere), 5));
+    
+    let s1 = Sphere::new(1.7, 0.7, 0.0, 0.7);
+    world.objects.push((Shape::Sphere(s1), 2));
+
+    let s2 = Sphere::new(2.8, 0.4, 0.0, 0.4);
+    world.objects.push((Shape::Sphere(s2), 4));
+
+    let s3 = Sphere::new(-5.0, 4.0, 0.0, 4.0);
+    world.objects.push((Shape::Sphere(s3), 3));
+
+    let big_sphere = Sphere::new(2.0, 10.0, -13.0, 10.0);
+    world.objects.push((Shape::Sphere(big_sphere), 3));
+
+    let big_sphere = Sphere::new(100.0, 100.0, 30.0, 100.0);
+    world.objects.push((Shape::Sphere(big_sphere), 6));
+
 }

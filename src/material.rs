@@ -34,6 +34,11 @@ pub const GREEN: Color = Color {
     y: 200.0 / 255.0,
     z: 90.0 / 255.0,
 };
+pub const PINK: Color = Color {
+    x: 213.0 / 255.0,
+    y: 20.0 / 255.0,
+    z: 227.0 / 255.0,
+};
 
 pub trait Material: Debug + Sync + Send {
     fn scatter(
