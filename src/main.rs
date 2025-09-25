@@ -35,7 +35,7 @@ fn main() {
     let vfov = 46.0;
     let focal_length = 10.0;
     let focal_angle = 0.5; 
-    let samples = 10;
+    let samples = 40;
     let max_depth = 50;
     let camera = Camera::new(aspect_ratio, image_width, location, view_target, focal_length, focal_angle, vfov, samples, max_depth);
 
@@ -145,6 +145,7 @@ fn make_scene(world: &mut World) {
     world.add_material(Lambertian {albedo: RED});
     world.add_material(Lambertian {albedo: PINK});
 
+    /* 
     let ground_sphere = Sphere::new(0.0, -1000.0, 0.0, 1000.0);
     world.objects.push((Shape::Sphere(ground_sphere), 1));
 
@@ -165,5 +166,10 @@ fn make_scene(world: &mut World) {
 
     let big_sphere = Sphere::new(100.0, 100.0, 30.0, 100.0);
     world.objects.push((Shape::Sphere(big_sphere), 6));
+    */
+    let ground_sphere = Sphere::new(0.0, -1000.0, 0.0, 1000.0);
+    world.objects.push((Shape::Sphere(ground_sphere), 1));
 
+    let central_sphere = Sphere::new(0.0, 1.0, 0.0, 1.0);
+    world.objects.push((Shape::Sphere(central_sphere), 5));
 }
